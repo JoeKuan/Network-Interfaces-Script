@@ -7,15 +7,15 @@ Read and update awk scripts for Ubuntu /etc/network/interfaces file.
 
 ## Parse Interfaces Script
 
-_awk -f readInterfaces.awk <interfaces file> <device=ethX>_
+_awk -f readInterfaces.awk &lt;interfaces file&gt; &lt;device=ethX&gt;_
 
-For usage sample and more information, see [this blog](1).
+For usage sample and more information, see [this blog][1].
 
 ## Update Interfaces Script
 
-_awf -f changeInterface.awk <interfaces file> <device=ethX> <name=value>_
+_awf -f changeInterface.awk &lt;interfaces file&gt; &lt;device=ethX&gt; &lt;name=value&gt;_
 
-For usage sample and more information, see [this blog](2).
+For usage sample and more information, see [this blog][2].
 
 [1]: http://joekuan.wordpress.com/2009/11/01/awk-scripts-for-reading-and-editing-ubuntu-etcnetworkinterfaces-file-part-12/
 [2]: http://joekuan.wordpress.com/2009/11/01/awk-scripts-for-reading-and-editing-ubuntu-etcnetworkinterfaces-file-part-22/
