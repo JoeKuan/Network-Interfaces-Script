@@ -2,7 +2,7 @@
 
 Read and update awk scripts for Ubuntu /etc/network/interfaces file.
 
-**readInterfaces.awk** -- parse and output interface configuration
+**readInterfaces.awk** -- parse and output interface configuration  
 **changeInterface.awk** -- modify interfaces file
 
 ## Parse Interfaces Script
