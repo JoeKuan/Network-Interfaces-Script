@@ -16,6 +16,8 @@ For usage sample and more information, see [this blog][1].
 _awf -f changeInterface.awk &lt;interfaces file&gt; &lt;device=ethX&gt; &lt;name=value&gt;_
 
 For usage sample and more information, see [this blog][2].
+For updating DNS entry, see [this blog][3].
 
 [1]: http://joekuan.wordpress.com/2009/11/01/awk-scripts-for-reading-and-editing-ubuntu-etcnetworkinterfaces-file-part-12/
 [2]: http://joekuan.wordpress.com/2009/11/01/awk-scripts-for-reading-and-editing-ubuntu-etcnetworkinterfaces-file-part-22/
+[3]: http://joekuan.wordpress.com/2015/10/30/awk-script-for-changing-ubuntu-network-interfaces-added-dns-feature/
