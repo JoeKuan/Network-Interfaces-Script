@@ -13,7 +13,7 @@ function writeStatic(addr, nw, nm, gw, dns) {
         print "    gateway ", gw
 
     if (length(dns))
-	print "    dns-nameservers ", dns
+        print "    dns-nameservers ", dns
 }
 
 function usage() {
@@ -43,18 +43,20 @@ BEGIN { start = 0;
         else if (pair[1] == "dev")
             device = pair[2];
         else if (pair[1] == "dns") {
-	    if (!length(pair[2])) {
-		dnsVal = "clear";
-	    } else {
-		dnsVal = pair[2];
-	    }
-	}
+            if (!length(pair[2])) {
+                dnsVal = "clear";
+            } else {
+                dnsVal = pair[2];
+            }
+        }
         else if (pair[1] == "arg" && pair[2] == "debug")
             debug = 1;
         else if (pair[1] == "mode" && pair[2] == "dhcp") 
             dhcp = 1;
         else if (pair[1] == "mode" && pair[2] == "static") 
             static = 1;
+        else if (pair[1] == "mode" && pair[2] == "remove")
+            remove = 1;
         else {
             usage();
             exit 1;
@@ -69,7 +71,13 @@ BEGIN { start = 0;
     }
 } 
 
-{ 
+{
+    if ($1 == "auto" && remove) {
+        gsub(device, "");
+        print;
+        next;
+    }
+ 
     # Look for iface line and if the interface comes with the device name
     # scan whether it is dhcp or static 
     if ($1 == "iface")  {
@@ -79,7 +87,12 @@ BEGIN { start = 0;
 
             if (debug)
                 print $0;
-
+       
+            # If remove is defined, switch on delete mode 
+            if (remove) {
+                definedRemove=1;
+            }
+ 
             # It's a DHCP interface, if defined any static properties
             # change it to static
             if (match($0, / dhcp/)) {
@@ -107,21 +120,24 @@ BEGIN { start = 0;
         # If it is other inteface line, switch it off
         else {
 
-	    if (definedStatic) {
-		if (length(dnsVal) && dnsVal != "clear") {
-		    if (debug) {
-			print "Detected new iface defined but dns hasn't been updated yet";
-		    }
-		    print "    dns-nameservers ", dnsVal;
-		}
-	    }
-	    
+            if (definedStatic) {
+                if (length(dnsVal) && dnsVal != "clear") {
+                    if (debug) {
+                        print "Detected new iface defined but dns hasn't been updated yet";
+                    }
+                    print "    dns-nameservers ", dnsVal;
+                }
+            }
+            
             definedStatic = 0;
             definedDhcp = 0;
+            definedRemove = 0;
         }
 
-        print $0;
-        next;
+        if (!definedRemove) {
+            print $0;
+            next;
+        }
     }
 
     # Reaches here - means non iface lines
@@ -149,20 +165,21 @@ BEGIN { start = 0;
                 print "    network ", network; 
 
             else if ($1 == "dns-nameservers") {
-		# Overwrite it if dns is defined.
-		# Clear the dns entry if the parameter is empty string
-		if (length(dnsVal) && dnsVal != "clear") {
-		    print "    dns-nameservers ", dnsVal;
-		    # Important - to reset the dns. So that we know whether
-		    # dns has been updated to the interfaces file
-		    dnsVal = "";
-		} else if (!length(dnsVal)) {
-		    print $0;
-		}
-	    }
+                # Overwrite it if dns is defined.
+                # Clear the dns entry if the parameter is empty string
+                if (length(dnsVal) && dnsVal != "clear") {
+                    print "    dns-nameservers ", dnsVal;
+                    # Important - to reset the dns. So that we know whether
+                    # dns has been updated to the interfaces file
+                    dnsVal = "";
+                } else if (!length(dnsVal)) {
+                    print $0;
+                }
+            }
 
-            else 
+            else if (!definedRemove) {
                 print $0;
+            }
         }
         next;
     }
@@ -174,21 +191,23 @@ BEGIN { start = 0;
         next;
     }
 
-    print $0;
+    if (!definedRemove) {
+        print $0;
+    }
 }
 
 END {
     if (definedDhcp) {
-	# This bit is useful at the condition when the last line is
-	# iface dhcp
+        # This bit is useful at the condition when the last line is
+        # iface dhcp
         writeStatic(address, network, netmask, gateway, dnsVal);
     } else if (definedStatic) {
-	# Condition for last line and adding dns entry
-	if (length(dnsVal) && dnsVal != "clear") {
-	    if (debug) {
-		print "Detected end of line but dns hasn't been updated yet";
-	    }
-	    print "    dns-nameservers ", dnsVal;
-	}
+        # Condition for last line and adding dns entry
+        if (length(dnsVal) && dnsVal != "clear") {
+            if (debug) {
+                print "Detected end of line but dns hasn't been updated yet";
+            }
+            print "    dns-nameservers ", dnsVal;
+        }
     }
 }
