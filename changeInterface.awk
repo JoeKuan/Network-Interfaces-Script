@@ -19,7 +19,7 @@ function writeStatic(addr, nw, nm, gw, dns) {
 function usage() {
         print "awk -f changeInterfaces.awk <interfaces file> dev=<eth device> \n" \
             "       [address=<ip addr>] [gateway=<ip addr>] [netmask=<ip addr>]\n" \
-            "       [network=<ip addr>] [mode=dhcp|static] [dns=<ip addr [ip addr ...]>] [arg=debug]"
+            "       [network=<ip addr>] [mode=dhcp|static|remove|manual] [dns=<ip addr [ip addr ...]>] [arg=debug]"
 }
 
 BEGIN { start = 0;
@@ -57,6 +57,8 @@ BEGIN { start = 0;
             static = 1;
         else if (pair[1] == "mode" && pair[2] == "remove")
             remove = 1;
+        else if (pair[1] == "mode" && pair[2] == "manual")
+            manual = 1;
         else {
             usage();
             exit 1;
@@ -72,11 +74,13 @@ BEGIN { start = 0;
 } 
 
 {
-    if ($1 == "auto" && remove) {
-        gsub(device, "");
-        print;
+    # maybe remove auto if manual is selected??
+    if ($1 == "auto" && remove ) {
+        if($2 != device) 
+            print;
         next;
     }
+    
  
     # Look for iface line and if the interface comes with the device name
     # scan whether it is dhcp or static 
@@ -124,6 +128,11 @@ BEGIN { start = 0;
                     print $0;
                     next;
                 }
+                if (manual) {
+                    sub(/ static/, " manual");
+                    print $0;
+                    next;
+                }
             }
 
         } 
@@ -158,7 +167,7 @@ BEGIN { start = 0;
         # Already defined static, just changing the properties
         # Otherwise omit everything until the iface section is
         # finished
-        if (!dhcp) {
+        if (!dhcp && !manual) {
 
             if (debug)
                 print "static - ", $0, $1;
@@ -183,6 +192,8 @@ BEGIN { start = 0;
                     # Important - to reset the dns. So that we know whether
                     # dns has been updated to the interfaces file
                     dnsVal = "";
+                } else if (remove) {
+                    dnsVal = "";    
                 } else if (!length(dnsVal)) {
                     print $0;
                 }
