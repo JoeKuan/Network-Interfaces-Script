@@ -1,4 +1,4 @@
-function writeStatic(addr, nw, nm, gw, dns) {
+function writeStatic(addr, nw, nm, gw, dns, device) {
 
     if (length(addr)) 
         print "    address ", addr
@@ -14,12 +14,20 @@ function writeStatic(addr, nw, nm, gw, dns) {
 
     if (length(dns))
         print "    dns-nameservers ", dns
+
+    if (length(br))
+    {
+        print "    bridge_ports", device
+        print "    bridge_fd 0"
+        print "    bridge_maxwait 0"
+    }
 }
 
 function usage() {
         print "awk -f changeInterfaces.awk <interfaces file> dev=<eth device> \n" \
             "       [address=<ip addr>] [gateway=<ip addr>] [netmask=<ip addr>]\n" \
-            "       [network=<ip addr>] [mode=dhcp|static|remove|manual] [dns=<ip addr [ip addr ...]>] [arg=debug]"
+            "       [network=<ip addr>] [mode=add|dhcp|static|remove|manual] [dns=<ip addr [ip addr ...]>] [arg=debug]\n" \
+            "       [bridge=<bridge device>]"
 }
 
 BEGIN { start = 0;
@@ -40,6 +48,8 @@ BEGIN { start = 0;
             network = pair[2];
         else if (pair[1] == "netmask")
             netmask = pair[2];
+        else if (pair[1] == "brigde")
+            brigde = pair[2];
         else if (pair[1] == "dev")
             device = pair[2];
         else if (pair[1] == "dns") {
@@ -59,6 +69,8 @@ BEGIN { start = 0;
             remove = 1;
         else if (pair[1] == "mode" && pair[2] == "manual")
             manual = 1;
+        else if (pair[1] == "mode" && pair[2] == "add")
+            add = 1;
         else {
             usage();
             exit 1;
@@ -71,6 +83,7 @@ BEGIN { start = 0;
         usage();
         exit 1;
     }
+
 } 
 
 {
@@ -80,11 +93,11 @@ BEGIN { start = 0;
             print;
         next;
     }
-    
- 
+
     # Look for iface line and if the interface comes with the device name
     # scan whether it is dhcp or static 
     if ($1 == "iface")  {
+
 
         # Ethernet name matches - switch the line scanning on
         if ($2 == device) {
@@ -117,6 +130,12 @@ BEGIN { start = 0;
                     print "iface", device, "inet static";
                     next;
                 }
+                # Change to dhcp if defined
+                if (dhcp) {
+                    sub(/ manual/, " dhcp");
+                    print $0;
+                    next;
+                }
             }
 
             # It's a static network interface
@@ -138,7 +157,6 @@ BEGIN { start = 0;
         } 
         # If it is other inteface line, switch it off
         else {
-
             if (definedStatic) {
                 if (length(dnsVal) && dnsVal != "clear") {
                     if (debug) {
@@ -226,12 +244,12 @@ END {
     if (definedDhcp) {
         # This bit is useful at the condition when the last line is
         # iface dhcp
-        writeStatic(address, network, netmask, gateway, dnsVal);
+        writeStatic(address, network, netmask, gateway, dnsVal, device);
     } 
     else if (definedManual) {
         # This bit is useful at the condition when the last line is
         # iface dhcp
-        writeStatic(address, network, netmask, gateway, dnsVal);
+        writeStatic(address, network, netmask, gateway, dnsVal, device);
     }
     else if (definedStatic) {
         # Condition for last line and adding dns entry
@@ -241,5 +259,11 @@ END {
             }
             print "    dns-nameservers ", dnsVal;
         }
+    }
+
+    if(add)
+    {
+        print "\nauto", device;
+        print "iface",device,"inet manual";
     }
 }
