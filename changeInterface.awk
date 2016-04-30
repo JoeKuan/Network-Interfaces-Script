@@ -103,7 +103,17 @@ BEGIN { start = 0;
                     print "iface", device, "inet static";
                     next;
                 }
-            } 
+            }
+
+            else if (match ($0, / manual/)) {
+                definedManual=1;
+                # Change to static if defined properties
+                if (length(address) || length (gateway) || 
+                    length(netmask) || length (network) || static) {
+                    print "iface", device, "inet static";
+                    next;
+                }
+            }
 
             # It's a static network interface
             else if (match ($0, / static/)) {
@@ -132,6 +142,7 @@ BEGIN { start = 0;
             definedStatic = 0;
             definedDhcp = 0;
             definedRemove = 0;
+            definedManual = 0;
         }
 
         if (!definedRemove) {
@@ -189,6 +200,10 @@ BEGIN { start = 0;
         writeStatic(address, network, netmask, gateway, dnsVal);
         definedDhcp = 0;
         next;
+    } else if (definedManual) {
+        writeStatic(address, network, netmask, gateway, dnsVal);
+        definedManual = 0;
+        next;
     }
 
     if (!definedRemove) {
@@ -201,7 +216,13 @@ END {
         # This bit is useful at the condition when the last line is
         # iface dhcp
         writeStatic(address, network, netmask, gateway, dnsVal);
-    } else if (definedStatic) {
+    } 
+    else if (definedManual) {
+        # This bit is useful at the condition when the last line is
+        # iface dhcp
+        writeStatic(address, network, netmask, gateway, dnsVal);
+    }
+    else if (definedStatic) {
         # Condition for last line and adding dns entry
         if (length(dnsVal) && dnsVal != "clear") {
             if (debug) {
