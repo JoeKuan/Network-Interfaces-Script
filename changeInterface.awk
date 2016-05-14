@@ -221,6 +221,12 @@ BEGIN { start = 0;
                 print $0;
             }
         }
+
+        if ($1 == "auto" || $1 == "allow-hotplug" || $1 == "")
+        {
+            print
+        }
+
         next;
     }
 
