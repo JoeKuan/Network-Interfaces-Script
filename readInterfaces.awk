@@ -33,6 +33,7 @@ BEGIN { start = 0;
             # It's a DHCP interface
             if (match($0, / dhcp/)) {
                 print "dhcp";
+                gotTypeNoAddr = 1;
                 exit 0;
                 # It's a static network interface. We want to scan the
                 # addresses after the static line
@@ -41,6 +42,7 @@ BEGIN { start = 0;
                 next;
             } else if (match ($0, / manual/)) {
                 print "manual";
+                gotTypeNoAddr = 1;
                 exit 0;
             }
  
@@ -80,6 +82,10 @@ END {
         printf("%s %s %s\n", address, netmask, gateway);
         exit 0;
     } else {
-        exit 1;
+        if (gotTypeNoAddr) {
+            exit 0;
+        } else {
+            exit 1;
+        }
     }
 }
