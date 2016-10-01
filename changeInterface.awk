@@ -88,7 +88,7 @@ BEGIN { start = 0;
 
 {
     # maybe remove auto if manual is selected??
-    if ($1 == "auto" && remove ) {
+    if (($1 == "auto" && remove) || ($1 == "auto" && manual) ) {
         if($2 != device) 
             print;
         next;
@@ -120,6 +120,13 @@ BEGIN { start = 0;
                     print "iface", device, "inet static";
                     next;
                 }
+        # change to manual if defined
+                if (manual) {
+                    sub(/ dhcp/, " manual");
+                    print $0;
+                    print "\n"
+                    next;
+                }
             }
 
             else if (match ($0, / manual/)) {
@@ -134,6 +141,7 @@ BEGIN { start = 0;
                 if (dhcp) {
                     sub(/ manual/, " dhcp");
                     print $0;
+                    print "\n"
                     next;
                 }
             }
