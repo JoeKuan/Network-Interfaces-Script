@@ -1,37 +1,35 @@
-function writeStatic(addr, nw, nm, gw, dns, device) {
+function writeStatic(device, fields, orders) {
 
-    if (length(addr)) 
-        print "    address ", addr
-    
-    if (length(nw)) 
-        print "    network ", nw 
-
-    if (length(nm)) 
-        print "    netmask ", nm
-
-    if (length(gw)) 
-        print "    gateway ", gw
-
-    if (length(dns))
-        print "    dns-nameservers ", dns
-
-    if (length(br))
-    {
-        print "    bridge_ports", device
-        print "    bridge_fd 0"
-        print "    bridge_maxwait 0"
+    # Create the order as original
+    for (o = 0; o < length(orders); o++) {
+	field = orders[o];
+	value = fields[field];
+	delete fields[field];
+	if (length(value)) {
+	    printf("    %s %s\n", field, value);	    
+	}
     }
+    
+    # additional items have no order
+    for (f in fields) {
+	value = fields[f];
+	if (length(value)) {
+	    printf("    %s %s\n", f, value);
+	}
+    }
+    print "";
 }
 
 function usage() {
         print "awk -f changeInterfaces.awk <interfaces file> dev=<eth device> \n" \
-            "       [address=<ip addr>] [gateway=<ip addr>] [netmask=<ip addr>]\n" \
-            "       [network=<ip addr>] [mode=add|dhcp|static|remove|manual] [dns=<ip addr [ip addr ...]>] [arg=debug]\n" \
-            "       [bridge=<bridge device>]"
+            "       [mode=dhcp|static|manual] [action=add|remove] \n" \
+            "       [address=<ip addr> networkmask=<ipaddress> <name=value> ]\n" \
+	    "       [arg=debug]\n"
 }
 
 BEGIN { start = 0;
-    dnsVal = "";
+
+    order = 0
     
     if (ARGC < 3 || ARGC > 10) {
         usage();
@@ -40,244 +38,144 @@ BEGIN { start = 0;
 
     for (i = 2; i < ARGC; i++) {
         split(ARGV[i], pair, "=");
-        if (pair[1] == "address")
-            address = pair[2];
-        else if (pair[1] == "gateway")
-            gateway = pair[2];
-        else if (pair[1] == "network")
-            network = pair[2];
-        else if (pair[1] == "netmask")
-            netmask = pair[2];
-        else if (pair[1] == "brigde")
-            brigde = pair[2];
-        else if (pair[1] == "dev")
-            device = pair[2];
-        else if (pair[1] == "dns") {
-            if (!length(pair[2])) {
-                dnsVal = "clear";
-            } else {
-                dnsVal = pair[2];
-            }
-        }
-        else if (pair[1] == "arg" && pair[2] == "debug")
+        if (pair[1] == "arg" && pair[2] == "debug") {
             debug = 1;
-        else if (pair[1] == "mode" && pair[2] == "dhcp") 
-            dhcp = 1;
-        else if (pair[1] == "mode" && pair[2] == "static") 
-            static = 1;
-        else if (pair[1] == "mode" && pair[2] == "remove")
+	} else if (pair[1] == "mode") {
+	    mode = pair[2];
+	} else if (pair[1] == "action" && pair[2] == "remove")
             remove = 1;
-        else if (pair[1] == "mode" && pair[2] == "manual")
-            manual = 1;
-        else if (pair[1] == "mode" && pair[2] == "add")
+        else if (pair[1] == "action" && pair[2] == "add")
             add = 1;
-        else {
-            usage();
-            exit 1;
-        }
+	else if (pair[1] == "device" || pair[1] == "dev") {
+	    device = pair[2];
+	} else if (length(pair) == 2) {
+	    if (pair[1] == "dns") {
+		pair[1] = "dns-nameservers";
+	    }
+	    settings[pair[1]] = pair[2];
+	} else {
+	    usage();
+	    exit 1;
+	}
     }
 
     # Sort out the logic of argument
-    if (dhcp && (length(network) || length(gateway) || length(address) || length(netmask))) {
+    if (mode == "dhcp" && (length(network) || length(gateway) || length(address) || length(netmask))) {
         print "Both DHCP and static properties are defined";
         usage();
         exit 1;
+    } else if (!mode && !remove) {
+	print "Missing mode input";
+	usage();
+	exit 1;
     }
 
+    if (debug) {
+	for (f in settings) {
+	    print f, ": ", settings[f];
+	}
+    }
 } 
 
 {
-    # maybe remove auto if manual is selected??
-    if (($1 == "auto" && remove) || ($1 == "auto" && manual) ) {
-        if($2 != device) 
-            print;
-        next;
+    # auto <device> line
+    if ($1 == "auto") {
+	if ($2 != device) {
+	    # We come to different device
+	    # Good place to write all the settings
+	    if (targetDev) {
+		targetDev = 0;
+		if (!add && !remove) {
+		    if (mode == "static" || mode == "manual") {
+			writeStatic(device, settings, fieldOrders);
+		    }
+		}	    
+	    }
+	    print $0;
+	    next;
+	} else if (!remove) {
+	    print $0;
+	    add = 0;
+	    next;
+	}
+	# Remove - don't print
+	next;
     }
+    # iface <device> .. line
+    else if ($1 == "iface") {
 
-    # Look for iface line and if the interface comes with the device name
-    # scan whether it is dhcp or static 
-    if ($1 == "iface")  {
+	if ($2 != device) {
+	    # We come to different device
+	    # Good place to write all the settings
+	    if (targetDev) {
+		targetDev = 0;
+		if (!add && !remove) {
+		    if (mode == "static" || mode == "manual") {
+			writeStatic(device, settings, fieldOrders);
+		    }
+		}	    
+	    }
+	    print $0;
+	    next;	    
+	} else {
 
+	    # If already specified 'add' and found an existing entry
+	    # cancel it
+	    add = 0;
+	    
+	    # Go to different condition in next loop
+	    targetDev = 1;
 
-        # Ethernet name matches - switch the line scanning on
-        if ($2 == device) {
-
-            if (debug)
-                print $0;
-       
-            # If remove is defined, switch on delete mode 
-            if (remove) {
-                definedRemove=1;
-            }
- 
-            # It's a DHCP interface, if defined any static properties
-            # change it to static
-            if (match($0, / dhcp/)) {
-                definedDhcp=1;
-                # Change to static if defined properties
-                if (length(address) || length (gateway) || 
-                    length(netmask) || length (network) || static) {
-                    print "iface", device, "inet static";
-                    next;
-                }
-        # change to manual if defined
-                if (manual) {
-                    sub(/ dhcp/, " manual");
-                    print $0;
-                    print "\n"
-                    next;
-                }
-            }
-
-            else if (match ($0, / manual/)) {
-                definedManual=1;
-                # Change to static if defined properties
-                if (length(address) || length (gateway) || 
-                    length(netmask) || length (network) || static) {
-                    print "iface", device, "inet static";
-                    next;
-                }
-                # Change to dhcp if defined
-                if (dhcp) {
-                    sub(/ manual/, " dhcp");
-                    print $0;
-                    print "\n"
-                    next;
-                }
-            }
-
-            # It's a static network interface
-            else if (match ($0, / static/)) {
-                definedStatic=1;
-                # Change to dhcp if defined
-                if (dhcp) {
-                    sub(/ static/, " dhcp");
-                    print $0;
-                    next;
-                }
-                if (manual) {
-                    sub(/ static/, " manual");
-                    print $0;
-                    next;
-                }
-            }
-
-        } 
-        # If it is other inteface line, switch it off
-        else {
-            if (definedStatic) {
-                if (length(dnsVal) && dnsVal != "clear") {
-                    if (debug) {
-                        print "Detected new iface defined but dns hasn't been updated yet";
-                    }
-                    print "    dns-nameservers ", dnsVal;
-                }
-            }
-            
-            definedStatic = 0;
-            definedDhcp = 0;
-            definedRemove = 0;
-            definedManual = 0;
-        }
-
-        if (!definedRemove) {
-            print $0;
-            next;
-        }
+	    if (!remove) {
+		printf("iface %s inet %s\n", device, mode);
+	    }	    
+	    next;
+	}	
     }
+    
+    # Matched device found - working through each line
+    # until found a 'auto' line or end of file 
+    else if (targetDev) {
 
-    # Reaches here - means non iface lines
-    # Change the static content
-    if (definedStatic) {
+	# Comment line - leave it
+	if (substr($1, 0, 1) == "#") {
+	    print $0;
+	    next;
+	}
+	
+	field = $1;
+	if (field in settings) {
+	    # It means we specify the argument in command line
+	    # as preference over the file content
+	} else {
+	    # field not in the command line
+	    # copy it over
+	    settings[field] = substr($0, index($0, $2))
+	}
+	fieldOrders[order] = field
+	order++;
+	next;
 
-        # Already defined static, just changing the properties
-        # Otherwise omit everything until the iface section is
-        # finished
-        if (!dhcp && !manual) {
-
-            if (debug)
-                print "static - ", $0, $1;
-            
-            if ($1 == "address" && length(address)) 
-                print "    address ", address
-       
-            else if ($1 == "netmask" && length(netmask)) 
-                print "    netmask ", netmask;
-        
-            else if ($1 == "gateway" && length(gateway))
-                print "    gateway ", gateway; 
-
-            else if ($1 == "network" && length(network))
-                print "    network ", network; 
-
-            else if ($1 == "dns-nameservers") {
-                # Overwrite it if dns is defined.
-                # Clear the dns entry if the parameter is empty string
-                if (length(dnsVal) && dnsVal != "clear") {
-                    print "    dns-nameservers ", dnsVal;
-                    # Important - to reset the dns. So that we know whether
-                    # dns has been updated to the interfaces file
-                    dnsVal = "";
-                } else if (remove) {
-                    dnsVal = "";    
-                } else if (!length(dnsVal)) {
-                    print $0;
-                }
-            }
-
-            else if (!definedRemove) {
-                print $0;
-            }
-        }
-
-        if ($1 == "auto" || $1 == "allow-hotplug" || $1 == "")
-        {
-            print
-        }
-
-        next;
-    }
-
-    # If already defined dhcp, then dump the network properties
-    if (definedDhcp) {
-        writeStatic(address, network, netmask, gateway, dnsVal);
-        definedDhcp = 0;
-        next;
-    } else if (definedManual) {
-        writeStatic(address, network, netmask, gateway, dnsVal);
-        definedManual = 0;
-        next;
-    }
-
-    if (!definedRemove) {
-        print $0;
+    # Other type of lines e.g. comment
+    } else {
+	print $0;
+	next;
     }
 }
 
 END {
-    if (definedDhcp) {
-        # This bit is useful at the condition when the last line is
-        # iface dhcp
-        writeStatic(address, network, netmask, gateway, dnsVal, device);
-    } 
-    else if (definedManual) {
-        # This bit is useful at the condition when the last line is
-        # iface dhcp
-        writeStatic(address, network, netmask, gateway, dnsVal, device);
-    }
-    else if (definedStatic) {
-        # Condition for last line and adding dns entry
-        if (length(dnsVal) && dnsVal != "clear") {
-            if (debug) {
-                print "Detected end of line but dns hasn't been updated yet";
-            }
-            print "    dns-nameservers ", dnsVal;
-        }
-    }
 
-    if(add)
-    {
-        print "\nauto", device;
-        print "iface",device,"inet manual";
-    }
+    # Come to the last line and we may not print out the
+    # matched device settings
+    if (!remove) {
+	if (add || targetDev) {
+	    if (add) {
+		printf("auto %s\n", device);
+		printf("iface %s inet %s\n", device, mode);
+	    }
+	    if (mode != "dhcp") {
+		writeStatic(device, settings, fieldOrders);
+	    }
+	}
+    }    
 }
