@@ -194,7 +194,8 @@ class StaticChangeDns(NI_TestCase):
         rc = subprocess.check_call("awk -f changeInterface.awk %s dev=eth0 mode=static 'dns=192.168.0.1 192.168.0.2 192.168.0.3' > %s"
                                    % (self.testSource, self.testOutput), shell=True)
         self.assertTrue(rc == 0, "changeInterface.awk non zero exit status")
-        output = subprocess.check_output("awk -f readInterfaces.awk %s device=eth0 output=all" % self.testOutput,
+        # Need sort because the order of output is diff on Linux vs OSX
+        output = subprocess.check_output("awk -f readInterfaces.awk %s device=eth0 output=all | sort" % self.testOutput,
                                          shell=True)
         lines = output.splitlines()
         ln = lines[2]
@@ -441,16 +442,17 @@ class StaticAddFull(NI_TestCase):
         rc = subprocess.check_call("awk -f changeInterface.awk %s dev=eth2 action=add mode=static address=10.0.10.18 netmask=255.255.255.0 gateway=10.0.10.1 network=10.0.0.0 'dns=10.0.10.1 10.0.10.11 10.0.10.77' > %s"
                                    % (self.testSource, self.testOutput), shell=True)
         self.assertTrue(rc == 0, "changeInterface.awk non zero exit")
-        out = subprocess.check_output("awk -f readInterfaces.awk %s device=eth2 output=all" % self.testOutput, shell=True)
+        # Need sort because the order of output is diff on Linux vs OSX
+        out = subprocess.check_output("awk -f readInterfaces.awk %s device=eth2 output=all | sort" % self.testOutput, shell=True)
         lines = out.splitlines()
         self.assertTrue(len(lines) == 3, "Expect full interface output")
         self.assertTrue(lines[0].strip() == '10.0.10.18 255.255.255.0 10.0.10.1', 'Cannot find added dhcp entry: ' + out)
         head, tail = lines[1].split(None, 1)
-        self.assertTrue(head == 'network', "Expect network output ")
-        self.assertTrue(tail == '10.0.0.0', "Expect network address")
-        head, tail = lines[2].split(None, 1)
         self.assertTrue(head == 'dns-nameservers', "Expect dns output ")
         self.assertTrue(tail == '10.0.10.1 10.0.10.11 10.0.10.77', "Expect dns address")
+        head, tail = lines[2].split(None, 1)
+        self.assertTrue(head == 'network', "Expect network output ")
+        self.assertTrue(tail == '10.0.0.0', "Expect network address")
         numLines = self.numOfDiffLines()
         self.assertTrue(numLines == 7,
                         "Make sure the rest of the content is not corrupted\n" + self.diffContent())
