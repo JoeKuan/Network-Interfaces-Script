@@ -1,7 +1,7 @@
 function writeStatic(device, fields, orders) {
 
     # Create the order as original
-    for (o = 0; o < length(orders); o++) {
+    for (o = 0; o in orders; o++) {
 	field = orders[o];
 	value = fields[field];
 	delete fields[field];
@@ -37,7 +37,7 @@ BEGIN { start = 0;
     }
 
     for (i = 2; i < ARGC; i++) {
-        split(ARGV[i], pair, "=");
+        num = split(ARGV[i], pair, "=");
         if (pair[1] == "arg" && pair[2] == "debug") {
             debug = 1;
 	} else if (pair[1] == "mode") {
@@ -48,7 +48,7 @@ BEGIN { start = 0;
             add = 1;
 	else if (pair[1] == "device" || pair[1] == "dev") {
 	    device = pair[2];
-	} else if (length(pair) == 2) {
+	} else if (num == 2) {
 	    if (pair[1] == "dns") {
 		pair[1] = "dns-nameservers";
 	    }
