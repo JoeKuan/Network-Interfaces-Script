@@ -1,4 +1,4 @@
-# Network-Interfaces-Script (Ver 1.1)
+# Network-Interfaces-Script (Ver 1.2)
 
 Read and update awk scripts for Ubuntu /etc/network/interfaces file.
 
