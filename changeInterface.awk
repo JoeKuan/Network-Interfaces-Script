@@ -30,6 +30,7 @@ function usage() {
 BEGIN { start = 0;
 
     order = 0
+    version = "inet"
     
     if (ARGC < 3 || ARGC > 10) {
         usage();
@@ -46,6 +47,8 @@ BEGIN { start = 0;
             remove = 1;
         else if (pair[1] == "action" && pair[2] == "add")
             add = 1;
+        else if (pair[1] == "version" && pair[2] == "ipv6")
+            version = "inet6";
 	else if (pair[1] == "device" || pair[1] == "dev") {
 	    device = pair[2];
 	} else if (num == 2) {
@@ -127,7 +130,7 @@ BEGIN { start = 0;
 	    targetDev = 1;
 
 	    if (!remove) {
-		printf("iface %s inet %s\n", device, mode);
+		printf("iface %s %s %s\n", device, version, mode);
 	    }	    
 	    next;
 	}	
@@ -171,7 +174,7 @@ END {
 	if (add || targetDev) {
 	    if (add) {
 		printf("auto %s\n", device);
-		printf("iface %s inet %s\n", device, mode);
+		printf("iface %s %s %s\n", device, version, mode);
 	    }
 	    if (mode != "dhcp") {
 		writeStatic(device, settings, fieldOrders);

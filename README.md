@@ -13,13 +13,14 @@ Here is the standard usage for changeInterface.awk:
 
 ```
 awk -f changeInterface.awk <interfaces file> <device=ethX> 
-     <mode=(dhcp|static|manual)> [action=add|remove] 
+     <mode=(dhcp|static|manual)> [action=add|remove] [version=ipv4|ipv6] 
      [address=<ip addr> netmask=<ip addr> <name=value> ...]
 ```
 
 * `device=ethX` - target network interface to configure
 * `mode=(dhcp|static|manual)` - type of network interface to configure. This argument is not required when `action` is `remove`
 * `action=(add|remove)` - optional argument. Add or remove an interface entry. If this argument is not specified, it assumes `modify` operation
+* `version=(ipv4|ipv6)` - optional argument. Choose the ip protocol version. If this argument is not specified, it assumes `ipv4` operation
 * `name=value` - configuration for a network interface. The script doesn't limit what settings as long as in name and value syntax. For example:
    * `network=192.168.0.0` - modify (if already exists) or add the network setting
    * `network=` - specify without value means to remove the network setting if already exists
