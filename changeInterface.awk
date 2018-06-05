@@ -82,7 +82,7 @@ BEGIN { start = 0;
 
 {
     # auto <device> line
-    if ($1 == "auto") {
+    if ($1 == "auto" || $1 == "allow-hotplug") {
 	if ($2 != device) {
 	    # We come to different device
 	    # Good place to write all the settings
