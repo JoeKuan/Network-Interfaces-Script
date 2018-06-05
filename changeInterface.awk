@@ -17,7 +17,6 @@ function writeStatic(device, fields, orders) {
 	    printf("    %s %s\n", f, value);
 	}
     }
-    print "";
 }
 
 function usage() {
@@ -92,6 +91,7 @@ BEGIN { start = 0;
 		    if (mode == "static" || mode == "manual") {
 			writeStatic(device, settings, fieldOrders);
 		    }
+            print "";
 		}	    
 	    }
 	    print $0;
@@ -116,6 +116,7 @@ BEGIN { start = 0;
 		    if (mode == "static" || mode == "manual") {
 			writeStatic(device, settings, fieldOrders);
 		    }
+            print "";
 		}	    
 	    }
 	    print $0;
@@ -179,6 +180,7 @@ END {
 	    if (mode != "dhcp") {
 		writeStatic(device, settings, fieldOrders);
 	    }
+        print "";
 	}
     }    
 }
