@@ -1,9 +1,9 @@
-# Network-Interfaces-Script (Ver 1.2)
+# Network-Interfaces-Script (Ver 1.3)
 
 Read and update awk scripts for Ubuntu /etc/network/interfaces file.
 
-**readInterfaces.awk** -- parse and output interface configuration
-**changeInterface.awk** -- modify interfaces file
+* **readInterfaces.awk** -- parse and output interface configuration
+* **changeInterface.awk** -- modify interfaces file
 
 ## Parse Interfaces Script
 Complete re-implement both scripts with much simpler logic, shorter code and pack with more flexible features. It now allows you to add/modify/delete interfaces, as well as add/modify/delete any settings within an interface. These scripts are tested with testChangeInterface.py python script.
