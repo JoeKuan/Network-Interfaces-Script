@@ -507,6 +507,67 @@ class StaticAddFullStaticExist(NI_TestCase):
         self.assertTrue(numLines == 3,
                         "Make sure the rest of the content is not corrupted\n" + self.diffContent())
 
+class DhcpIpv4ToIpv6(NI_TestCase):
+
+    def runTest(self):
+        """ Change from Dhcp IPv4 to IPv6 """
+        rc = subprocess.check_call("awk -f changeInterface.awk %s device=p3p1 version=ipv6 mode=dhcp > %s"
+                                   % (self.testSource, self.testOutput), shell=True)
+        self.assertTrue(rc == 0, "changeInterface.awk non zero exit")
+
+        out = None
+        try:
+            subprocess.check_output("diff %s %s" % (self.testSource, self.testOutput), shell=True)
+            self.fail('No difference after ip version command')
+        except subprocess.CalledProcessError as err:
+            self.assertEqual(err.returncode, 1,
+                            "Expected different in diff command")
+            out = err.output
+            
+        lines = out.splitlines()
+        self.assertTrue(lines[0].strip() == '14c14',
+                        'Unexpected diff output ' + lines[0])
+        self.assertTrue(lines[1].strip() == '< iface p3p1 inet dhcp',
+                        'Unexpected diff output ' + lines[1])        
+        self.assertTrue(lines[3].strip() == '> iface p3p1 inet6 dhcp',
+                        'Unexpected diff output ' + lines[3])
+        numLines = self.numOfDiffLines()
+        self.assertTrue(numLines == 1,
+                        "Make sure the rest of the content is not corrupted\n" + self.diffContent())
+
+class ChangeIpv4StaticToIpv6Static(NI_TestCase):
+
+    def runTest(self):
+        """ Change a IPv4 entry to IPv6 Static """
+        rc = subprocess.check_call("awk -f changeInterface.awk %s device=eth3 version=ipv6 mode=static address=2607:f0d0:2001:000a:0000:0000:0000:0010 netmask=64 gateway=2607:f0d0:2001:000a:0000:0000:0000:0001 > %s"
+                                   % (self.testSource, self.testOutput), shell=True)
+        self.assertTrue(rc == 0, "changeInterface.awk non zero exit")
+        out = subprocess.check_output("awk -f readInterfaces.awk %s device=eth3" % self.testOutput, shell=True)
+        lines = out.splitlines()
+        self.assertTrue(lines[0].strip() == '2607:f0d0:2001:000a:0000:0000:0000:0010 64 2607:f0d0:2001:000a:0000:0000:0000:0001',
+                        'IPv6 address does not match ' + lines[0])
+        
+        numLines = self.numOfDiffLines()
+        self.assertTrue(numLines == 4,
+                        "Make sure the rest of the content is not corrupted\n" + self.diffContent())
+
+class AddIpv6Static(NI_TestCase):
+
+    def runTest(self):
+        """ Add a IPv6 entry """
+        rc = subprocess.check_call("awk -f changeInterface.awk %s device=eth1 version=ipv6 action=add mode=static address=2001:470:801f::1 netmask=64 gateway=2001:470:1f05:15a::1 > %s"
+                                   % (self.testSource, self.testOutput), shell=True)
+        self.assertTrue(rc == 0, "changeInterface.awk non zero exit")
+        out = subprocess.check_output("awk -f readInterfaces.awk %s device=eth1 output=all" % self.testOutput, shell=True)
+        lines = out.splitlines()
+        self.assertTrue(lines[0].strip() == '2001:470:801f::1 64 2001:470:1f05:15a::1',
+                        'Cannot find eth1 static entry: ' + lines[0])
+        
+        numLines = self.numOfDiffLines()
+        self.assertTrue(numLines == 5,
+                        "Make sure the rest of the content is not corrupted\n" + self.diffContent())
+
+
 ###########################################
 # ADD YOUR OWN TESTS HERE
 ###########################################
@@ -546,6 +607,10 @@ if __name__ == "__main__":
     suite.addTest(StaticAddDhcpExist())
     suite.addTest(StaticAddFullDhcpExist())
     suite.addTest(StaticAddFullStaticExist())
+    
+    suite.addTest(DhcpIpv4ToIpv6())
+    suite.addTest(ChangeIpv4StaticToIpv6Static())
+    suite.addTest(AddIpv6Static())
     
     unittest.TextTestRunner(verbosity=2).run(suite)
 
